@@ -129,6 +129,29 @@ TRIBITS_ADD_TEST(
    FAIL_REGULAR_EXPRESSION "Teko tests failed"
    )
 
+TRIBITS_ADD_EXECUTABLE(
+  HeuristicBlockPermutationDriverTest
+  SOURCES
+    ../examples/HeuristicBlockPermutation/driver-heuristic-permutation.cpp
+  COMM mpi serial
+  )
+
+TRIBITS_ADD_TEST(
+  HeuristicBlockPermutationDriverTest
+  NAME "HeuristicBlockPermutationDriverTest"
+  ARGS "--matrix=data/multiphys.mm --rhs=data/multiphys.rhs --partition=data/multiphys.dofblockgids"
+  NUM_MPI_PROCS  1
+  COMM mpi
+  PASS_REGULAR_EXPRESSION "Belos converged"
+)
+
+TRIBITS_ADD_TEST(
+   testdriver_tpetra
+   ARGS ${PARALLEL_ARGS_STRING}
+   NUM_MPI_PROCS ${CUSTOM_MPI_PROCS}
+   FAIL_REGULAR_EXPRESSION "Teko tests failed"
+   )
+
 SET(TEST_DRIVER_DATA_FILES
   lsc_B_2.mm
   lsc_Bt_2.mm
@@ -149,6 +172,9 @@ IF(${PROJECT_NAME}_ENABLE_DEVELOPMENT_MODE)
     ${TEST_DRIVER_DATA_FILES}
     nsjac.mm
     nsjac_1.mm
+    multiphys.dofblockgids
+    multiphys.mm
+    multiphys.rhs
     )
 ENDIF()
 
@@ -324,7 +350,7 @@ TRIBITS_ADD_EXECUTABLE_AND_TEST(
   NUM_MPI_PROCS 1
   )
 
-  TRIBITS_ADD_EXECUTABLE_AND_TEST(
+TRIBITS_ADD_EXECUTABLE_AND_TEST(
   HeuristicBlockPermutation
   SOURCES
   unit_tests/tHeuristicBlockPermutation.cpp
