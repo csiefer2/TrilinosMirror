@@ -67,7 +67,7 @@ double lowerTriangularLossScore(const BlockNormsViewType& blockNorms,
 struct HeuristicSettings {
   std::string heuristicMethod{"Greedy Block Merging Heuristic"};
   std::string blockInverseType{"Block Gauss-Seidel"};
-  bool gsUseUpperTriangle{false};
+  bool gsUseUpperTriangle{true};
   double maxHeuristicWalltime{1e-2};
   double targetNormLoss{1e-3};
 

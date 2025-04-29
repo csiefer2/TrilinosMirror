@@ -251,7 +251,7 @@ bool run_sparse_connectivity_test(const ConnectionsType& connections, int expect
   Teuchos::ParameterList p;
   p.set("Heuristic Method", "Greedy Block Merging Heuristic");
   p.set("Block Inverse Type", "Block Gauss-Seidel");
-  p.set("Use Block Upper Triangle", false);
+  p.set("Use Block Upper Triangle", true);
 
   // allow sufficient time to find optimal configuration for testing purposes
   const double maxWalltime = 1e-2;
@@ -303,6 +303,15 @@ TEUCHOS_UNIT_TEST(tHeuristicBlockPermutation,
                   GreedyBlockMergingTwoConnectedBlocksWithTrivialConnection) {
   ConnectionsType connections{
       {1, {0}}, {0, {1}}, {0, {2}}, {3, {4}}, {4, {3}},
+  };
+  TEST_EQUALITY(run_sparse_connectivity_test(connections, 2), true);
+}
+
+TEUCHOS_UNIT_TEST(tHeuristicBlockPermutation,
+                  GreedyBlockMergingTwoConnectedBlocksWithSeveralTrivialConnection) {
+  ConnectionsType connections{
+      {1, {0}}, {1, {9}}, {0, {1}}, {0, {2}}, {0, {7}},
+      {0, {8}}, {3, {4}}, {4, {3}}, {5, {6}}, {6, {8}},
   };
   TEST_EQUALITY(run_sparse_connectivity_test(connections, 2), true);
 }
