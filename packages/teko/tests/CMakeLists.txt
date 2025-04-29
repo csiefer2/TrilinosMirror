@@ -324,6 +324,16 @@ TRIBITS_ADD_EXECUTABLE_AND_TEST(
   NUM_MPI_PROCS 1
   )
 
+  TRIBITS_ADD_EXECUTABLE_AND_TEST(
+  HeuristicBlockPermutation
+  SOURCES
+  unit_tests/tHeuristicBlockPermutation.cpp
+    ${UNIT_TEST_DRIVER}
+  COMM serial mpi
+  ARGS ${SERIAL_ARGS_STRING}
+  NUM_MPI_PROCS 1
+  )
+
 TRIBITS_ADD_EXECUTABLE_AND_TEST(
   UtilitiesTests
   SOURCES

@@ -156,7 +156,7 @@ Index computeMaxOffDiagNorm(const BlockNormMapType& norms, const BlockOrderMap& 
   }
 
   return maxIndices;
-};
+}
 
 std::pair<BlockNormMapType, BlockOrderMap> combineBlocks(const Index& indexStar,
                                                          const BlockNormMapType& norms,
@@ -219,7 +219,7 @@ std::pair<BlockNormMapType, BlockOrderMap> combineBlocks(const Index& indexStar,
   }
 
   return std::make_pair(newNorms, newOrderMap);
-};
+}
 
 BlockNormsViewType blockNormsFromNormMap(const BlockNormMapType& normMap,
                                          const BlockOrderMap& ordering) {
