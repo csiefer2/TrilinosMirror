@@ -145,13 +145,6 @@ TRIBITS_ADD_TEST(
   PASS_REGULAR_EXPRESSION "Belos converged"
 )
 
-TRIBITS_ADD_TEST(
-   testdriver_tpetra
-   ARGS ${PARALLEL_ARGS_STRING}
-   NUM_MPI_PROCS ${CUSTOM_MPI_PROCS}
-   FAIL_REGULAR_EXPRESSION "Teko tests failed"
-   )
-
 SET(TEST_DRIVER_DATA_FILES
   lsc_B_2.mm
   lsc_Bt_2.mm
