@@ -55,18 +55,20 @@ using Teuchos::rcpFromRef;
 
 // Generates proc-by-proc block gid lists
 template <class LO, class GO, class NO>
-std::vector<std::vector<GO> > read_block_gids(std::string partitionFile, RCP<const Tpetra::Map<LO, GO, NO> > &rowMap) {
+std::vector<std::vector<GO>> read_block_gids(std::string partitionFile,
+                                             RCP<const Tpetra::Map<LO, GO, NO>> &rowMap) {
   using V   = Tpetra::Vector<LO, LO, GO, NO>;
   using CRS = Tpetra::CrsMatrix<LO, LO, GO, NO>;
 
-  RCP<V> pfile = Tpetra::MatrixMarket::Reader<CRS>::readVectorFile(partitionFile, rowMap->getComm(), rowMap);
+  RCP<V> pfile =
+      Tpetra::MatrixMarket::Reader<CRS>::readVectorFile(partitionFile, rowMap->getComm(), rowMap);
 
   int num_blocks = 1 + pfile->normInf();
 
   if (!rowMap->getComm()->getRank())
     std::cout << "Reading partition file: Found " << num_blocks << " blocks" << std::endl;
 
-  std::vector<std::vector<GO> > block_gids(num_blocks);
+  std::vector<std::vector<GO>> block_gids(num_blocks);
   auto vv = pfile->get1dView();
   for (LO i = 0; i < (LO)vv.size(); i++) {
     LO block_id = vv[i];
@@ -78,40 +80,39 @@ std::vector<std::vector<GO> > read_block_gids(std::string partitionFile, RCP<con
 
 template <class SC, class LO, class GO, class NO>
 void ReadSplittingFromDisk(const std::string &partitionFile,
-                           const RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > &crsMat,
+                           const RCP<Tpetra::CrsMatrix<SC, LO, GO, NO>> &crsMat,
                            RCP<Teko::TpetraHelpers::BlockedTpetraOperator> &A,
-                           std::vector<std::vector<GO>>& block_gids) {
+                           std::vector<std::vector<GO>> &block_gids) {
   // The format for the partition file is a number of lines of the form:
   // proc_id block_id gid0, gid1,...
   //
   // Blocks do not need to be uniquely owned by a processor.
 
   //  Each rank is going to read the file, one at a time (to avoid hammering on the disk)
-  auto comm                                        = crsMat->getRowMap()->getComm();
-  RCP<const Tpetra::Map<LO, GO, NO> > rowmap       = crsMat->getRowMap();
-  block_gids = read_block_gids<LO, GO, NO>(partitionFile, rowmap);
+  auto comm                                 = crsMat->getRowMap()->getComm();
+  RCP<const Tpetra::Map<LO, GO, NO>> rowmap = crsMat->getRowMap();
+  block_gids                                = read_block_gids<LO, GO, NO>(partitionFile, rowmap);
 
-  RCP<Teko::TpetraHelpers::BlockedTpetraOperator> rA = rcp(new Teko::TpetraHelpers::BlockedTpetraOperator(block_gids, crsMat));
+  RCP<Teko::TpetraHelpers::BlockedTpetraOperator> rA =
+      rcp(new Teko::TpetraHelpers::BlockedTpetraOperator(block_gids, crsMat));
 
   A = rA;
 }
 
 template <class SC, class LO, class GO, class NO>
 Teuchos::ParameterList augment_muelu_parameters_with_coordinates(
-    const Teuchos::ParameterList & initial_params, RCP<Tpetra::MultiVector<SC, LO, GO, NO> > &coords)
-{
+    const Teuchos::ParameterList &initial_params,
+    RCP<Tpetra::MultiVector<SC, LO, GO, NO>> &coords) {
   Teuchos::ParameterList params_with_coords(initial_params);
   if (!coords) return params_with_coords;
 
   auto xpetra_coords = Xpetra::toXpetra(coords);
-  for (auto && param : params_with_coords)
-  {
+  for (auto &&param : params_with_coords) {
     if (!params_with_coords.isSublist(param.key)) continue;
 
-    auto & sublist = params_with_coords.sublist(param.key, true);
-    if (sublist.isParameter("Type") && sublist.get<std::string>("Type") == "MueLu")
-    {
-      auto & muelu_sublist = sublist.sublist("user data");
+    auto &sublist = params_with_coords.sublist(param.key, true);
+    if (sublist.isParameter("Type") && sublist.get<std::string>("Type") == "MueLu") {
+      auto &muelu_sublist = sublist.sublist("user data");
       muelu_sublist.set("Coordinates", xpetra_coords);
     }
   }
@@ -119,10 +120,9 @@ Teuchos::ParameterList augment_muelu_parameters_with_coordinates(
   return params_with_coords;
 }
 
-// Optional ParameterList to generate_heuristic_permutation, but provided here nevertheless for demonstration purposes
-Teuchos::ParameterList
-default_heuristic_settings()
-{
+// Optional ParameterList to generate_heuristic_permutation, but provided here nevertheless for
+// demonstration purposes
+Teuchos::ParameterList default_heuristic_settings() {
   Teuchos::ParameterList tekoHeuristicSettings;
   tekoHeuristicSettings.set("Heuristic Method", "Greedy Block Merging Heuristic");
   tekoHeuristicSettings.set("Block Inverse Type", "Block Gauss-Seidel");
@@ -137,27 +137,31 @@ default_heuristic_settings()
 }
 
 template <class SC, class LO, class GO, class NO>
-int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > &crsMat, RCP<Tpetra::Vector<SC, LO, GO, NO> > &b, RCP<Tpetra::MultiVector<SC, LO, GO, NO> > &coords, const std::string &partitionFile) {
-  typedef Tpetra::MultiVector<SC,LO,GO,NO> MV;
-  typedef Tpetra::Operator<SC,LO,GO,NO> OP;
+int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO>> &crsMat,
+                 RCP<Tpetra::Vector<SC, LO, GO, NO>> &b,
+                 RCP<Tpetra::MultiVector<SC, LO, GO, NO>> &coords,
+                 const std::string &partitionFile) {
+  typedef Tpetra::MultiVector<SC, LO, GO, NO> MV;
+  typedef Tpetra::Operator<SC, LO, GO, NO> OP;
   auto comm = crsMat->getRowMap()->getComm();
 
   // tell Stratimikos => Teko about MueLu
-  RCP<Stratimikos::DefaultLinearSolverBuilder> linearSolverBuilder = Teuchos::rcp(new Stratimikos::DefaultLinearSolverBuilder);
-  //Stratimikos::enableMueLu<SC, LO, GO, NO>(*linearSolverBuilder);
+  RCP<Stratimikos::DefaultLinearSolverBuilder> linearSolverBuilder =
+      Teuchos::rcp(new Stratimikos::DefaultLinearSolverBuilder);
+  // Stratimikos::enableMueLu<SC, LO, GO, NO>(*linearSolverBuilder);
 
   /////////////////////////////////////////////////////////
   // Build the Thyra operators
   /////////////////////////////////////////////////////////
   RCP<Teko::TpetraHelpers::BlockedTpetraOperator> A;
-  RCP<Tpetra::Vector<SC, LO, GO, NO> > x = rcp(new Tpetra::Vector<SC, LO, GO, NO>(b->getMap()));
+  RCP<Tpetra::Vector<SC, LO, GO, NO>> x = rcp(new Tpetra::Vector<SC, LO, GO, NO>(b->getMap()));
 
   std::vector<std::vector<GO>> dof_block_gids;
   ReadSplittingFromDisk<SC, LO, GO, NO>(partitionFile, crsMat, A, dof_block_gids);
   x->putScalar(Teuchos::ScalarTraits<SC>::zero());
 
-  RCP<Thyra::MultiVectorBase<SC> > xt = Thyra::createVector(x);
-  RCP<Thyra::MultiVectorBase<SC> > bt = Thyra::createVector(b);
+  RCP<Thyra::MultiVectorBase<SC>> xt = Thyra::createVector(x);
+  RCP<Thyra::MultiVectorBase<SC>> bt = Thyra::createVector(b);
 
   /////////////////////////////////////////////////////////
   // Build the preconditioner
@@ -165,7 +169,8 @@ int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > &crsMat, RCP<Tpetra::Ve
 
   // Optional
   Teuchos::ParameterList tekoHeuristicSettings = default_heuristic_settings();
-  auto [permutation, score] = Teko::generate_heuristic_permutation(A, Teuchos::rcpFromRef(tekoHeuristicSettings));
+  auto [permutation, score] =
+      Teko::generate_heuristic_permutation(A, Teuchos::rcpFromRef(tekoHeuristicSettings));
 
   auto block_gids = Teko::construct_block_gids_from_permutation(permutation, dof_block_gids);
 
@@ -175,17 +180,21 @@ int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > &crsMat, RCP<Tpetra::Ve
   const std::string tekoInverseName = "MyTekoPreconditioner";
 
   // build an InverseLibrary
-  RCP<Teuchos::ParameterList> xmlList = Teko::generate_parameters_from_permutation(permutation, tekoInverseName);
+  RCP<Teuchos::ParameterList> xmlList =
+      Teko::generate_parameters_from_permutation(permutation, tekoInverseName);
 
   // Add coordinates if we need to (user app provides this information)
-  Teuchos::ParameterList paramsWithCoords = augment_muelu_parameters_with_coordinates(*xmlList, coords);
+  Teuchos::ParameterList paramsWithCoords =
+      augment_muelu_parameters_with_coordinates(*xmlList, coords);
 
-  RCP<Teko::InverseLibrary> invLib  = Teko::InverseLibrary::buildFromParameterList(paramsWithCoords, linearSolverBuilder);
+  RCP<Teko::InverseLibrary> invLib =
+      Teko::InverseLibrary::buildFromParameterList(paramsWithCoords, linearSolverBuilder);
   RCP<Teko::InverseFactory> inverse = invLib->getInverseFactory(tekoInverseName);
   auto preconditioner = Teuchos::rcp(new Teko::TpetraHelpers::InverseFactoryOperator(inverse));
   preconditioner->initInverse();
 
-  auto blocked_operator = Teuchos::rcp_dynamic_cast<const Tpetra::Operator<Teko::ST, Teko::LO, Teko::GO, Teko::NT>>(A);
+  auto blocked_operator =
+      Teuchos::rcp_dynamic_cast<const Tpetra::Operator<Teko::ST, Teko::LO, Teko::GO, Teko::NT>>(A);
   preconditioner->rebuildInverseOperator(blocked_operator);
 
   // Setup the Belos solver
@@ -197,17 +206,20 @@ int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > &crsMat, RCP<Tpetra::Ve
   belosList.set("Maximum Iterations", 200);      // Maximum number of iterations allowed
   belosList.set("Maximum Restarts", 1);          // Maximum number of restarts allowed
   belosList.set("Convergence Tolerance", 1e-8);  // Relative convergence tolerance requested
-  belosList.set("Verbosity", 33);                // Belos::Errors + Belos::Warnings + Belos::TimingDetails + Belos::StatusTestDetails );
+  belosList.set(
+      "Verbosity",
+      33);  // Belos::Errors + Belos::Warnings + Belos::TimingDetails + Belos::StatusTestDetails );
   belosList.set("Output Frequency", 1);
   belosList.set("Output Style", 1);
-  belosList.set("Flexible Gmres", true);         // NOTE: required due to sub-iterative schemes
+  belosList.set("Flexible Gmres", true);  // NOTE: required due to sub-iterative schemes
 
   Teuchos::RCP<const OP> tpetraOp = crsMat;
-  auto problem = rcp(new Belos::LinearProblem<double, MV, OP>(tpetraOp, x, b));
+  auto problem                    = rcp(new Belos::LinearProblem<double, MV, OP>(tpetraOp, x, b));
   problem->setRightPrec(preconditioner);
   problem->setProblem();
 
-  RCP<Belos::SolverManager<double, MV, OP> > solver = rcp(new Belos::BlockGmresSolMgr<double, MV, OP>(problem, rcpFromRef(belosList)));
+  RCP<Belos::SolverManager<double, MV, OP>> solver =
+      rcp(new Belos::BlockGmresSolMgr<double, MV, OP>(problem, rcpFromRef(belosList)));
 
   //
   // Perform solve
@@ -215,12 +227,10 @@ int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO> > &crsMat, RCP<Tpetra::Ve
   Belos::ReturnType ret = solver->solve();
 
   if (ret != Belos::Converged) {
-    std::cout << std::endl
-              << "ERROR:  Belos did not converge!" << std::endl;
+    std::cout << std::endl << "ERROR:  Belos did not converge!" << std::endl;
     return -1;
   } else {
-    std::cout << std::endl
-              << " Belos converged" << std::endl;
+    std::cout << std::endl << " Belos converged" << std::endl;
   }
 
   return 0;
@@ -278,11 +288,14 @@ int main(int argc, char *argv[]) {
   RCP<TP_Vec> rhs;
   RCP<TP_MV> coords;
   if (rowMapFile == "") {
-    crsMat = Tpetra::MatrixMarket::Reader<TP_Crs>::readSparseFile(matrixFile, Tpetra::getDefaultComm());
+    crsMat =
+        Tpetra::MatrixMarket::Reader<TP_Crs>::readSparseFile(matrixFile, Tpetra::getDefaultComm());
   } else {
-    RCP<const TP_Map> rowMap = Tpetra::MatrixMarket::Reader<TP_Crs>::readMapFile(rowMapFile, Tpetra::getDefaultComm());
+    RCP<const TP_Map> rowMap =
+        Tpetra::MatrixMarket::Reader<TP_Crs>::readMapFile(rowMapFile, Tpetra::getDefaultComm());
     RCP<const TP_Map> colMap;
-    crsMat = Tpetra::MatrixMarket::Reader<TP_Crs>::readSparseFile(matrixFile, rowMap, colMap, rowMap, rowMap);
+    crsMat = Tpetra::MatrixMarket::Reader<TP_Crs>::readSparseFile(matrixFile, rowMap, colMap,
+                                                                  rowMap, rowMap);
   }
 
   auto rowMap = crsMat->getRowMap();
@@ -294,8 +307,10 @@ int main(int argc, char *argv[]) {
   if (coordsFile != "") {
     RCP<const TP_Map> coordsMap = rowMap;
     if (coordsMapFile != "")
-      coordsMap = Tpetra::MatrixMarket::Reader<TP_Crs>::readMapFile(coordsMapFile, rowMap->getComm());
-    coords = Tpetra::MatrixMarket::Reader<TP_Crs>::readDenseFile(coordsFile, coordsMap->getComm(), coordsMap);
+      coordsMap =
+          Tpetra::MatrixMarket::Reader<TP_Crs>::readMapFile(coordsMapFile, rowMap->getComm());
+    coords = Tpetra::MatrixMarket::Reader<TP_Crs>::readDenseFile(coordsFile, coordsMap->getComm(),
+                                                                 coordsMap);
   }
 
   // Sanity checks
@@ -303,7 +318,7 @@ int main(int argc, char *argv[]) {
   if (crsMat.is_null()) throw std::runtime_error("crsMat is null");
 
   auto comm = crsMat->getRowMap()->getComm();
-  int rv = solve_tpetra<SC, LO, GO, NO>(crsMat, rhs, coords, partitionFile);
+  int rv    = solve_tpetra<SC, LO, GO, NO>(crsMat, rhs, coords, partitionFile);
 
   return rv;
 }
