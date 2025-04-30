@@ -33,7 +33,13 @@
 #include "Thyra_TpetraVectorSpace.hpp"
 
 #include "Stratimikos_DefaultLinearSolverBuilder.hpp"
-//#include <Stratimikos_MueLuHelpers.hpp>
+
+// In a regualar user-app, one can essentially always include this assuming MueLu is enabled.
+// Here, we use this ifdef since this particular driver is used as a test inside Teko,
+// leading to circular library dependencies if we were to add a dependency to MueLu here.
+#ifdef HAVE_MUELU_STRATIMIKOS
+#include <Stratimikos_MueLuHelpers.hpp>
+#endif
 
 // Belos includes
 #include "BelosConfigDefs.hpp"
@@ -148,7 +154,13 @@ int solve_tpetra(RCP<Tpetra::CrsMatrix<SC, LO, GO, NO>> &crsMat,
   // tell Stratimikos => Teko about MueLu
   RCP<Stratimikos::DefaultLinearSolverBuilder> linearSolverBuilder =
       Teuchos::rcp(new Stratimikos::DefaultLinearSolverBuilder);
-  // Stratimikos::enableMueLu<SC, LO, GO, NO>(*linearSolverBuilder);
+
+// In a regualar user-app, one can essentially always include the `Stratimikos::enableMueLu` call
+// below. Here, we use ifdef this call since this particular driver is used as a test inside Teko,
+// leading to circular library dependencies if we were to add a dependency to MueLu here.
+#ifdef HAVE_MUELU_STRATIMIKOS
+  Stratimikos::enableMueLu<SC, LO, GO, NO>(*linearSolverBuilder);
+#endif
 
   /////////////////////////////////////////////////////////
   // Build the Thyra operators
