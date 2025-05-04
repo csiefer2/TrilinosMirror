@@ -101,6 +101,7 @@ void extract_blocks_and_ns_from_file(const std::string &inFile,
   std::shared_ptr<stk::mesh::BulkData> outBulk = builder.create();
 
   stk::io::StkMeshIoBroker stkInput;
+  stkInput.property_add(Ioss::Property("LOWER_CASE_VARIABLE_NAMES", "off"));
   stk::io::fill_mesh_preexisting(stkInput, inFile, *inBulk);
 
 

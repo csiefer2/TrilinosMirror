@@ -52,6 +52,7 @@ namespace stk { namespace mesh { class Bucket; } }
 namespace stk { namespace mesh { class BulkData; } }
 namespace stk { namespace mesh { class FieldBase; } }
 namespace stk { namespace mesh { template<typename NgpMemSpace> class DeviceMeshT; } }
+namespace stk { namespace mesh { template<typename NgpMemSpace> class DeviceFieldDataManager; } }
 namespace stk { namespace mesh { namespace impl { class BucketRepository; } } }
 namespace stk { namespace mesh { namespace impl { class Partition; } } }
 namespace stk { namespace mesh { namespace impl { struct OverwriteEntityFunctor; } } }
@@ -154,6 +155,7 @@ public:
 
   /** \brief  Capacity of this bucket */
   size_t capacity() const { return m_capacity; }
+  size_t max_capacity() const { return m_maxCapacity; }
 
   /** \brief  Query the i^th entity */
   Entity operator[] ( size_t i ) const {
@@ -173,6 +175,11 @@ public:
   EntityRank entity_rank() const { return m_entity_rank ; }
 
   unsigned bucket_id() const { return m_bucket_id; }
+
+  unsigned ngp_mesh_bucket_id() const { return m_ngpMeshBucketId; }
+  unsigned ngp_field_bucket_id() const { return m_ngpFieldBucketId; }
+  bool ngp_mesh_bucket_is_modified() const { return m_ngpMeshBucketIsModified; }
+  bool ngp_field_bucket_is_modified() const { return m_ngpFieldBucketIsModified; }
 
   /** \brief  This bucket is a subset of these \ref stk::mesh::Part "parts"
    * WARNING: if the bucket is deleted, this reference will no longer
@@ -355,10 +362,6 @@ public:
     return get_connected_entities(offsetIntoBucket, stk::topology::ELEM_RANK);
   }
 
-  void set_ngp_field_bucket_id(unsigned fieldOrdinal, unsigned ngpFieldBucketId);
-  unsigned get_ngp_field_bucket_id(unsigned fieldOrdinal) const;
-  unsigned get_ngp_field_bucket_is_modified(unsigned fieldOrdinal) const;
-
   void reset_part_ord_begin_end();
 
   void reset_bucket_key(const OrdinalVector& newPartOrdinals);
@@ -420,23 +423,23 @@ private:
    */
   BulkData & bulk_data() const { return mesh(); }
 
-  bool is_modified() const { return m_is_modified; }
-  unsigned ngp_bucket_id() const { return m_ngp_bucket_id; }
-  void set_ngp_bucket_id(unsigned ngpBucketId) {
-    m_ngp_bucket_id = ngpBucketId;
-    m_is_modified = false;
+  void set_ngp_mesh_bucket_id(unsigned ngpBucketId) {
+    m_ngpMeshBucketId = ngpBucketId;
+    m_ngpMeshBucketIsModified = false;
+  }
+
+  void set_ngp_field_bucket_id(unsigned ngpBucketId) {
+    m_ngpFieldBucketId = ngpBucketId;
+    m_ngpFieldBucketIsModified = false;
   }
 
   void mark_for_modification()
   {
   #ifdef STK_USE_DEVICE_MESH
-    m_is_modified = true;
-    std::fill(m_ngp_field_is_modified.begin(), m_ngp_field_is_modified.end(), true);
+    m_ngpMeshBucketIsModified = true;
+    m_ngpFieldBucketIsModified = true;
   #endif
   }
-
-  void initialize_ngp_field_bucket_ids();
-  void grow_ngp_field_bucket_ids();
 
   Bucket();
 
@@ -495,6 +498,7 @@ private:
   friend struct impl::OverwriteEntityFunctor;
   friend class BulkData;
   template<typename NgpMemSpace> friend class DeviceMeshT;
+  template<typename NgpMemSpace> friend class DeviceFieldDataManager;
 
   BulkData             & m_mesh;
   const EntityRank       m_entity_rank;
@@ -505,8 +509,10 @@ private:
   unsigned               m_maxCapacity;
   size_type              m_size;
   unsigned               m_bucket_id;
-  unsigned               m_ngp_bucket_id;
-  bool                   m_is_modified;
+  unsigned               m_ngpMeshBucketId;
+  unsigned               m_ngpFieldBucketId;
+  bool                   m_ngpMeshBucketIsModified;
+  bool                   m_ngpFieldBucketIsModified;
   PartVector             m_parts;
 
   std::vector<Entity> m_entities;
@@ -554,9 +560,6 @@ private:
   bool m_owned;
   bool m_shared;
   bool m_aura;
-
-  std::vector<unsigned> m_ngp_field_bucket_id;
-  std::vector<bool> m_ngp_field_is_modified;
 };
 #undef CONNECTIVITY_TYPE_SWITCH
 #undef RANK_SWITCH

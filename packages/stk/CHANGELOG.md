@@ -1,5 +1,13 @@
 # CHANGELOG
 
+5.25.1 (STK_VERSION 5250100) 5/05/2025
+  stk_util: fix command-line-parser bug with partial flag matching
+  stk_tools: stk_block_extractor now preserves case in exodus variable/field names
+  stk_mesh: NgpMesh now has local_ids
+  stk_mesh: fix MacOS build error for BulkData::declare_entities
+  stk_mesh: NGP field-data is bucketized
+  stk_mesh: parallel_sum_including_ghosts can work on device or host
+
 5.23.8-03 (STK_VERSION 5230803) 4/22/2025
   stk_tools: fix compiler error in pmesh lib when SEACASNemesis
              is not enabled.

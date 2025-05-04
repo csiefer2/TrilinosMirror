@@ -472,7 +472,7 @@ void do_nonmodifying_debug_check(const stk::mesh::BulkData & bulk, const stk::me
 
   buckets[0]->check_size_invariant();
 
-  EXPECT_FALSE(buckets[0]->get_ngp_field_bucket_is_modified(coordsField.mesh_meta_data_ordinal()));
+  EXPECT_FALSE(buckets[0]->ngp_field_bucket_is_modified());
 }
 
 void do_modifying_entity_creation(stk::mesh::BulkData & bulk, const stk::mesh::FieldBase & coordsField)
@@ -491,8 +491,8 @@ void do_modifying_entity_creation(stk::mesh::BulkData & bulk, const stk::mesh::F
 
   const stk::mesh::BucketVector & buckets = bulk.buckets(stk::topology::NODE_RANK);
   ASSERT_EQ(buckets.size(), 2u);
-  EXPECT_TRUE(buckets[0]->get_ngp_field_bucket_is_modified(coordsField.mesh_meta_data_ordinal()));
-  EXPECT_TRUE(buckets[1]->get_ngp_field_bucket_is_modified(coordsField.mesh_meta_data_ordinal()));
+  EXPECT_TRUE(buckets[0]->ngp_field_bucket_is_modified());
+  EXPECT_TRUE(buckets[1]->ngp_field_bucket_is_modified());
 }
 
 TEST_F(BucketHex, checkModifiedStatus)

@@ -265,8 +265,10 @@ Bucket::Bucket(BulkData & mesh,
     m_maxCapacity(maximumCapacity),
     m_size(0),
     m_bucket_id(bucketId),
-    m_ngp_bucket_id(INVALID_BUCKET_ID),
-    m_is_modified(true),
+    m_ngpMeshBucketId(INVALID_BUCKET_ID),
+    m_ngpFieldBucketId(INVALID_BUCKET_ID),
+    m_ngpMeshBucketIsModified(true),
+    m_ngpFieldBucketIsModified(true),
     m_entities(maximumCapacity),
     m_partition(nullptr),
     m_node_kind(INVALID_CONNECTIVITY_TYPE),
@@ -299,8 +301,6 @@ Bucket::Bucket(BulkData & mesh,
   m_parts.reserve(m_key.size());
   supersets(m_parts);
   m_mesh.new_bucket_callback(m_entity_rank, m_parts, m_capacity, this);
-
-  initialize_ngp_field_bucket_ids();
 }
 
 Bucket::~Bucket()
@@ -578,53 +578,6 @@ unsigned Bucket::get_others_index_count(unsigned bucket_ordinal, EntityRank rank
 }
 
 //----------------------------------------------------------------------
-void Bucket::initialize_ngp_field_bucket_ids()
-{
-  const MetaData& meta = mesh().mesh_meta_data();
-  const FieldVector& allFields = meta.get_fields();
-  m_ngp_field_bucket_id.resize(allFields.size());
-  m_ngp_field_is_modified.resize(allFields.size());
-
-  for(FieldBase* field : allFields) {
-    m_ngp_field_bucket_id[field->mesh_meta_data_ordinal()] = INVALID_BUCKET_ID;
-    m_ngp_field_is_modified[field->mesh_meta_data_ordinal()] = false;
-  }
-}
-
-void Bucket::grow_ngp_field_bucket_ids()
-{
-  const MetaData& meta = mesh().mesh_meta_data();
-  const FieldVector& allFields = meta.get_fields();
-
-  const unsigned oldNumFields = m_ngp_field_bucket_id.size();
-  const unsigned newNumFields = allFields.size();
-  STK_ThrowRequire(newNumFields >= oldNumFields);
-
-  const unsigned numNewFields = newNumFields - oldNumFields;
-  for (unsigned i = 0; i < numNewFields; ++i) {
-    m_ngp_field_bucket_id.push_back(INVALID_BUCKET_ID);
-    m_ngp_field_is_modified.push_back(false);
-  }
-}
-
-void Bucket::set_ngp_field_bucket_id(unsigned fieldOrdinal, unsigned ngpFieldBucketId)
-{
-  STK_ThrowRequire(fieldOrdinal < m_ngp_field_bucket_id.size());
-  m_ngp_field_bucket_id[fieldOrdinal] = ngpFieldBucketId;
-  m_ngp_field_is_modified[fieldOrdinal] = false;
-}
-
-unsigned Bucket::get_ngp_field_bucket_id(unsigned fieldOrdinal) const
-{
-  STK_ThrowRequire(fieldOrdinal < m_ngp_field_bucket_id.size());
-  return m_ngp_field_bucket_id[fieldOrdinal];
-}
-
-unsigned Bucket::get_ngp_field_bucket_is_modified(unsigned fieldOrdinal) const
-{
-  return m_ngp_field_is_modified[fieldOrdinal];
-}
-
 void Bucket::reset_part_ord_begin_end()
 {
   m_partOrdsBeginEnd.first = m_key.data();
@@ -688,7 +641,7 @@ void Bucket::add_entity(Entity entity)
     mesh().set_mesh_index(entity, this, m_size);
   }
 
-  this->mesh().add_entity_callback(entity_rank(), bucket_id(), capacity(), m_size);
+  this->mesh().add_entity_callback(entity_rank(), bucket_id(), m_size+1, capacity(), m_size);
   ++m_size;
 
   AddEntityFunctor functor;
@@ -753,7 +706,7 @@ void Bucket::remove_entity()
   STK_ThrowAssert(m_size > 0);
 
   mark_for_modification();
-  mesh().remove_entity_field_data_callback(entity_rank(), bucket_id(), m_size-1);
+  mesh().remove_entity_field_data_callback(entity_rank(), bucket_id(), m_size-1, m_size-1);
   const unsigned bktOrdinal = m_size-1;
   --m_size;
 
@@ -774,7 +727,7 @@ void Bucket::copy_entity(const Bucket* fromBucket, unsigned fromOrdinal)
 
   mark_for_modification();
 
-  this->mesh().add_entity_callback(entity_rank(), bucket_id(), capacity(), m_size);
+  this->mesh().add_entity_callback(entity_rank(), bucket_id(), m_size+1, capacity(), m_size);
   const unsigned newOrdinal = m_size;
   reset_entity_location(newOrdinal, fromBucket, fromOrdinal);
 

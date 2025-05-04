@@ -184,6 +184,10 @@ BLASFixture<A>::BLASFixture(const A init1, const A init2, const A init3)
   stk::all_reduce_sum(stkMeshBulkData->parallel(),&numPartAEntitiesOwned,&numPartAEntitiesGlobal,1u);
   stk::all_reduce_sum(stkMeshBulkData->parallel(),&numPartBEntitiesOwned,&numPartBEntitiesGlobal,1u);
   EXPECT_EQ(numEntitiesGlobal, (meshSizeX+1) * (meshSizeY+1) * (meshSizeZ+1));
+
+  stk::mesh::get_updated_ngp_field<A>(*field1);
+  stk::mesh::get_updated_ngp_field<A>(*field2);
+  stk::mesh::get_updated_ngp_field<A>(*field3);
 }
 
 template<class A>
@@ -398,9 +402,15 @@ void test_copy(const Scalar initial1,const Scalar initial2,const Scalar initial3
 
   stk::mesh::field_copy(*Fixture.field1,*Fixture.field2);
   testFieldValidation(Fixture,initial1,initial1,initial3);
+  EXPECT_EQ(Fixture.field1->need_sync_to_device(), false);
+  EXPECT_EQ(Fixture.field2->need_sync_to_device(), true);
+  EXPECT_EQ(Fixture.field3->need_sync_to_device(), false);
 
   stk::mesh::field_copy(*Fixture.field3,*Fixture.field1);
   testFieldValidation(Fixture,initial3,initial1,initial3);
+  EXPECT_EQ(Fixture.field1->need_sync_to_device(), true);
+  EXPECT_EQ(Fixture.field2->need_sync_to_device(), true);
+  EXPECT_EQ(Fixture.field3->need_sync_to_device(), false);
 }
 
 TEST(FieldBLAS,copy_double)
