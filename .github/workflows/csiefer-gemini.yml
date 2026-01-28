@@ -5,8 +5,8 @@ on:
     - cron: '0 * * * *'  # Runs once an hour at the top of the hour
   workflow_dispatch:  # Allows manual triggering of the workflow
 
-  env:
-    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   copy-pr:
