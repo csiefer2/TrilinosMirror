@@ -80,6 +80,7 @@ jobs:
               PR_TITLE=$(gh pr view $pr --repo trilinos/Trilinos --json title --jq '.title')
               echo "OK PR_TITLE name is: $PR_TITLE"
               gh pr create \
+                --repo csiefer2/TrilinosMirror \
                 --title "[Mirror] $PR_TITLE" \
                 --body "Automated mirror of upstream PR trilinos/Trilinos#$pr" \
                 --head "$MIRROR_BRANCH" \
