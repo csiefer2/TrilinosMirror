@@ -26,6 +26,13 @@ jobs:
           git remote add upstream https://github.com/trilinos/Trilinos.git
           git fetch upstream master
 
+      - name: Sync Mirror Master
+        run: |
+          # Ensure your mirror's master is up to date to avoid workflow drift
+          git checkout master
+          git merge upstream/master
+          git push origin master
+
       - name: Get PRs authored by specific users
         id: get_prs
         env:
