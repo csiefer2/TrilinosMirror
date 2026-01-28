@@ -83,7 +83,7 @@ jobs:
               gh pr create \
                 --repo csiefer2/TrilinosMirror \
                 --title "[Mirror] $PR_TITLE" \
-                --body "Automated mirror of upstream PR trilinos/Trilinos#$pr\n$PR_BODY" \
+                --body "Automated mirror of upstream PR trilinos/Trilinos#$pr $PR_BODY" \
                 --head "$MIRROR_BRANCH" \
                 --base "develop"
             else
