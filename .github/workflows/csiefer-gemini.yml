@@ -71,7 +71,7 @@ jobs:
             git fetch upstream pull/$pr/head:$MIRROR_BRANCH -f
             git checkout $MIRROR_BRANCH
             git log $MIRROR_BRANCH..develop
-            git push origin $MIRROR_BRANCH -f
+            git push origin $MIRROR_BRANCH:$MIRROR_BRANCH -f
             
             # 3. Create Mirror PR if it doesn't exist
             PR_EXISTS=$(gh pr list --head "$MIRROR_BRANCH" --json number --jq '.[0].number')
