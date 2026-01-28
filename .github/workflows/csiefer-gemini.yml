@@ -54,7 +54,7 @@ jobs:
 
             # 1. Strict check: Does this PR touch .github/ at all?
             # We check the diff between the PR head and the upstream develop
-            TOUCHES_CONFIG=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path' | grep "^\.github/") || true
+            TOUCHES_CONFIG=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path' | grep "^\.github/")
             echo "TOUCHES_CONFIG = $TOUCHES_CONFIG"
             
             if [ -not -z "$TOUCHES_CONFIG" ]; then
@@ -87,6 +87,6 @@ jobs:
                 --head "$MIRROR_BRANCH" \
                 --base "develop"
             else
-              echo "Mirror PR #$PR_EXISTS updated."
+              echo "Mirror PR #$PR_EXISTS already exists. Doing nothing."
             fi
           done
