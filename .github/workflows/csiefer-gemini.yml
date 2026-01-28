@@ -54,7 +54,7 @@ jobs:
 
             # 1. Strict check: Does this PR touch .github/ at all?
             # We check the diff between the PR head and the upstream develop
-            TOUCHES_CONFIG=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path' | grep "^\.github/")
+            TOUCHES_CONFIG=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path' | grep "^\.github/") || true
             echo "TOUCHES_CONFIG = $TOUCHES_CONFIG"
             
             if [ -not -z "$TOUCHES_CONFIG" ]; then
