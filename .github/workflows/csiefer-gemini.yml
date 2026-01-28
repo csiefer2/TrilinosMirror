@@ -29,7 +29,7 @@ jobs:
       - name: Sync Mirror Master
         run: |
           # Ensure your mirror's develop is up to date to avoid workflow drift
-          git checkout origin/develop
+          git checkout --track origin/develop
           git merge upstream/develop
           git push origin develop
 
