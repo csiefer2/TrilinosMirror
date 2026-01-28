@@ -1,0 +1,44 @@
+name: Copy PRs from trilinos/Trilinos
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Runs once an hour at the top of the hour
+  workflow_dispatch:  # Allows manual triggering of the workflow
+
+jobs:
+  copy-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the source repository
+        uses: actions/checkout@v2
+        with:
+          repository: trilinos/Trilinos
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get PRs authored by specific users
+        id: get_prs
+        run: |
+          PRS=$(gh pr list --repo trilinos/Trilinos --state open --json number,author --jq '.[] | select(.author.login == "csiefer2" or .author.login == "cgcgcg") | .number')
+          echo "::set-output name=prs::$PRS"
+
+      - name: Copy PRs to the target repository
+        if: steps.get_prs.outputs.prs != ''
+        run: |
+          IFS=' ' read -r -a pr_array <<< "${{ steps.get_prs.outputs.prs }}"
+          for pr in "${pr_array[@]}"; do
+            echo "Processing PR #$pr"
+            git checkout -b copy-pr-$pr
+            git config user.name "GitHub Action"
+            git config user.email "action@github.com"
+
+            # Checkout the specific PR
+            git fetch origin pull/$pr/head:pr-$pr
+            git checkout pr-$pr
+
+            # Copy files to the target repository
+            cp -r . ../csiefer/Trilinos/
+            cd ../csiefer/Trilinos/
+            git add .
+            git commit -m "Copy PR #$pr from trilinos/Trilinos"
+            git push origin copy-pr-$pr
+          done
