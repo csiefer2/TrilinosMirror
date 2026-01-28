@@ -6,7 +6,8 @@ on:
 permissions:
   contents: write
   pull-requests: write # Changed to write to allow PR creation
-
+  workflows: write  # Add this to allow pushing branches that contain workflow files
+  
 jobs:
   copy-pr:
     runs-on: ubuntu-latest
