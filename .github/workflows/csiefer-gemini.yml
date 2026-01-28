@@ -1,4 +1,4 @@
-name: Copy PRs from trilinos/Trilinos
+name: csiefer: PR copy action
 
 on:
   schedule:
