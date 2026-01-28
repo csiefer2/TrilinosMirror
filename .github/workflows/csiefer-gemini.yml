@@ -1,13 +1,11 @@
-name: csiefer PR copy action
-
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs once an hour at the top of the hour
-  workflow_dispatch:  # Allows manual triggering
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write # Changed to write to allow PR creation
 
 jobs:
   copy-pr:
@@ -16,19 +14,14 @@ jobs:
       - name: Checkout the target repository
         uses: actions/checkout@v4
         with:
-          # We check out the MIRROR repo, so we have permissions to push to it
           repository: csiefer2/TrilinosMirror
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0 # Fetch full history to ensure git operations work smoothly
+          fetch-depth: 0
 
       - name: Configure Git
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-
-      - name: Add upstream remote
-        run: |
-          # Add the source repo as a remote named 'upstream'
           git remote add upstream https://github.com/trilinos/Trilinos.git
 
       - name: Get PRs authored by specific users
@@ -36,35 +29,48 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Query the UPSTREAM repo for PRs
-          PRS=$(gh pr list --repo trilinos/Trilinos --state open --json number,author --jq '.[] | select(.author.login == "csiefer2" or .author.login == "cgcgcg") | .number')
-          
-          # Use new GITHUB_OUTPUT syntax to handle multiline or empty results cleanly
-          # We replace newlines with spaces to create a list
+          PRS=$(gh pr list --repo trilinos/Trilinos --state open --json number,author --jq '.[] | select(.author.login == "csiefer2" or .author.login == "cgcgcg") | .number')          
           echo "prs=$(echo $PRS | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
       - name: Mirror PRs to target repository
         if: steps.get_prs.outputs.prs != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Read the space-separated list of PR numbers
-          IFS=' ' read -r -a pr_array <<< "${{ steps.get_prs.outputs.prs }}"
-          
+          IFS=' ' read -r -a pr_array <<< "${{ steps.get_prs.outputs.prs }}"          
           for pr in "${pr_array[@]}"; do
-            # Skip empty items if any
             [[ -z "$pr" ]] && continue
             
-            echo "Processing PR #$pr..."
+            echo "Checking PR #$pr for .github changes..."
             
-            # Define a consistent branch name for the mirror
+            # 1. Ignore PRs that touch .github
+            FILES=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path')
+            if echo "$FILES" | grep -q "^\.github/"; then
+              echo "Skipping PR #$pr: it modifies the .github directory."
+              continue
+            fi
+
             MIRROR_BRANCH="pr-mirror-$pr"
 
-            # 1. Fetch the specific PR head from upstream into a local branch
-            #    Force (-f) updates the local branch if the PR was updated
+            # 2. Mirror the branch
             git fetch upstream pull/$pr/head:$MIRROR_BRANCH -f
-            
-            # 2. Push that branch to origin (csiefer2/TrilinosMirror)
-            #    Force (-f) allows overwriting the remote branch if the PR was updated
             git push origin $MIRROR_BRANCH -f
             
-            echo "Successfully mirrored PR #$pr to branch $MIRROR_BRANCH"
+            # 3. Mirror the actual Pull Request
+            # Check if PR already exists in the mirror repo for this branch
+            PR_EXISTS=$(gh pr list --head "$MIRROR_BRANCH" --json number --jq '.[0].number')
+
+            if [ -z "$PR_EXISTS" ]; then
+              echo "Creating mirror PR for #$pr..."
+              # Fetch original title to make the mirror PR look correct
+              PR_TITLE=$(gh pr view $pr --repo trilinos/Trilinos --json title --jq '.title')
+              
+              gh pr create \
+                --title "[Mirror] $PR_TITLE" \
+                --body "Automated mirror of upstream PR trilinos/Trilinos#$pr" \
+                --head "$MIRROR_BRANCH" \
+                --base "master" # Ensure this matches your mirror's default branch
+            else
+              echo "Mirror PR already exists as #$PR_EXISTS. Branch updated."
+            fi
           done
