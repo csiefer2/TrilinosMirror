@@ -516,7 +516,7 @@ private:
   std::string m_restartOutputFileName;
 };
 
-int main(int argc, const char** argv)
+int main(int argc, char** argv)
 {
   std::string working_directory = "";
   std::string decomp_method = "";
@@ -539,7 +539,7 @@ int main(int argc, const char** argv)
   std::string resultsOutputFileName = "";
   std::string restartOutputFileName = "";
 
-  MPI_Comm comm = stk::parallel_machine_init(&argc, const_cast<char***>(&argv));
+  MPI_Comm comm = stk::initialize(&argc, &argv);
 
   set_output_streams(comm);
 
@@ -567,7 +567,11 @@ int main(int argc, const char** argv)
   cmdLine.add_optional<int>({"initial_bucket_capacity", "b", "initial bucket capacity"}, stk::mesh::get_default_initial_bucket_capacity());
   cmdLine.add_optional<int>({"maximum_bucket_capacity", "B", "maximum bucket capacity"}, stk::mesh::get_default_maximum_bucket_capacity());
 
-  stk::CommandLineParser::ParseState parseState = cmdLine.parse(argc, argv);
+  stk::ErrorHandler orig = stk::set_assert_handler(stk::clean_error_handler);
+
+  stk::CommandLineParser::ParseState parseState = cmdLine.parse(argc, const_cast<const char**>(argv));
+
+  stk::set_assert_handler(orig);
 
   if (parseState != stk::CommandLineParser::ParseComplete) {
     int returnCode = 0;
@@ -591,7 +595,7 @@ int main(int argc, const char** argv)
       break;
     default: break;
     }
-    stk::parallel_machine_finalize();
+    stk::finalize();
     return returnCode;
   }
 
@@ -738,7 +742,7 @@ int main(int argc, const char** argv)
     }
   }
 
-  stk::parallel_machine_finalize();
+  stk::finalize();
   return returnValue;
 }
 

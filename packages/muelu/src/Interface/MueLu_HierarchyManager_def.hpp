@@ -205,9 +205,9 @@ void MueLu::HierarchyManager<Scalar, LocalOrdinal, GlobalOrdinal, Node>::SetupHi
   ExportDataSetKeepFlags(H, elementToNodeMapsToPrint_, "pcoarsen: element to node map");
 #endif
 
-  // Data to save only (these do not have a level, so we do all levels)
-  for (int i = 0; i < dataToSave_.size(); i++)
-    ExportDataSetKeepFlagsAll(H, dataToSave_[i]);
+  // Data to keep only (these do not have a level, so we do all levels)
+  for (int i = 0; i < dataToKeep_.size(); i++)
+    ExportDataSetKeepFlagsAll(H, dataToKeep_[i]);
 
   int levelID      = 0;
   int lastLevelID  = numDesiredLevel_ - 1;
@@ -357,9 +357,8 @@ void MueLu::HierarchyManager<Scalar, LocalOrdinal, GlobalOrdinal, Node>::WriteDa
         agg = L->template Get<RCP<Aggregates>>("Aggregates");
       }
       if (!agg.is_null()) {
-        std::ofstream ofs(fileName);
-        Teuchos::FancyOStream fofs(rcp(&ofs, false));
-        agg->print(fofs, Teuchos::VERB_EXTREME);
+        auto Vertex2AggId = agg->GetVertex2AggId();
+        Xpetra::IO<Scalar, LocalOrdinal, GlobalOrdinal, Node>::WriteLOMV(fileName, *Vertex2AggId);
       }
     }
   }

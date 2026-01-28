@@ -40,7 +40,6 @@
 #include <array>
 #include <climits>
 #include <cstddef>
-#include <fmt/core.h>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <map>
@@ -488,7 +487,7 @@ namespace Ioss {
       return MeshType::UNSTRUCTURED;
     }
     if (!elementBlocks.empty() && !structuredBlocks.empty()) {
-      return MeshType::HYBRID;
+      return MeshType::UNKNOWN;
     }
     if (!structuredBlocks.empty()) {
       return MeshType::STRUCTURED;
@@ -501,7 +500,6 @@ namespace Ioss {
   {
     switch (mesh_type()) {
     case MeshType::UNKNOWN: return "Unknown";
-    case MeshType::HYBRID: return "Hybrid";
     case MeshType::STRUCTURED: return "Structured";
     case MeshType::UNSTRUCTURED: return "Unstructured";
     }
@@ -631,7 +629,7 @@ namespace Ioss {
         " Element side sets  = {16:{24}}\t Element sides = {22:{23}}\t Sideset    = {31:{25}}\n"
         " Assemblies         = {40:{24}}\t                 {38:{23}s}\t Assembly   = {41:{25}}\t{54:{25}}\n"
         " Blobs              = {42:{24}}\t                 {38:{23}s}\t Blob       = {43:{25}}\t{55:{25}}\n\n"
-        " Time steps         = {32:{24}}\n",
+        " Time steps         = {32:{24}}",
         get_database()->get_filename(), mesh_type_string(),                /* 0, 1 */
         fmt::group_digits(get_property("spatial_dimension").get_int()),
 	fmt::group_digits(get_property("node_count").get_int()),
@@ -688,6 +686,14 @@ namespace Ioss {
 	fmt::group_digits(num_asm_red_vars),
         fmt::group_digits(num_blob_red_vars),
 	change_set_name, change_set_count);
+
+    if (num_ts > 0) {
+      auto mm = std::minmax_element(stateTimes.begin(), stateTimes.end());
+      fmt::print("\t({} to {})\n", *mm.first, *mm.second);
+    }
+    else {
+      fmt::print("\n");
+    }
     // clang-format on
   }
 
@@ -1273,6 +1279,12 @@ namespace Ioss {
       // Add name as alias to itself to simplify later uses...
       add_alias_nl(assembly);
 
+      // Also add "assembly_{id}" as an alias.
+      auto id = assembly->get_optional_property(id_str(), -1);
+      if (id != -1) {
+        std::string as_alias = fmt::format("assembly_{}", id);
+        add_alias_nl(assembly->name(), as_alias, assembly->type());
+      }
       return true;
     }
     return false;
@@ -1742,6 +1754,12 @@ namespace Ioss {
       std::string uname = Ioss::Utils::uppercase(alias);
       if (uname != alias) {
         aliases_[type].insert(std::make_pair(uname, canon));
+      }
+
+      std::string fname = alias;
+      Ioss::Utils::fixup_name(fname);
+      if (fname != alias && fname != canon) {
+        aliases_[type].insert(std::make_pair(fname, canon));
       }
 
       bool result;

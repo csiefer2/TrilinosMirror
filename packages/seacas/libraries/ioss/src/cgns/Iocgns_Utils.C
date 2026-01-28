@@ -8,18 +8,31 @@
 #include "Ioss_Beam2.h"
 #include "Ioss_Beam3.h"
 #include "Ioss_CodeTypes.h"
+#include "Ioss_DatabaseIO.h"
+#include "Ioss_ElementBlock.h"
+#include "Ioss_ElementTopology.h"
+#include "Ioss_EntityBlock.h"
+#include "Ioss_EntityType.h"
 #include "Ioss_FaceGenerator.h"
+#include "Ioss_GroupingEntity.h"
 #include "Ioss_Hex20.h"
 #include "Ioss_Hex27.h"
 #include "Ioss_Hex8.h"
 #include "Ioss_IOFactory.h"
+#include "Ioss_MeshType.h"
 #include "Ioss_Node.h"
+#include "Ioss_NodeBlock.h"
+#include "Ioss_ParallelUtils.h"
+#include "Ioss_Property.h"
 #include "Ioss_Pyramid13.h"
 #include "Ioss_Pyramid14.h"
 #include "Ioss_Pyramid5.h"
 #include "Ioss_Quad4.h"
 #include "Ioss_Quad8.h"
 #include "Ioss_Quad9.h"
+#include "Ioss_Region.h"
+#include "Ioss_SideBlock.h"
+#include "Ioss_SideSet.h"
 #include "Ioss_Sort.h"
 #include "Ioss_Spring2.h"
 #include "Ioss_Spring3.h"
@@ -30,15 +43,18 @@
 #include "Ioss_Tri6.h"
 #include "Ioss_Unknown.h"
 #include "Ioss_Utils.h"
+#include "Ioss_VariableType.h"
 #include "Ioss_Wedge15.h"
 #include "Ioss_Wedge18.h"
 #include "Ioss_Wedge6.h"
+#include "Ioss_ZoneConnectivity.h"
+
 #include <assert.h>
+#include <cstdlib>
 #include <fmt/chrono.h>
-#include <fmt/core.h>
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <stdint.h>
-#include <stdlib.h>
 #if !defined __NVCC__
 #include <fmt/color.h>
 #endif
@@ -49,29 +65,12 @@
 #include <cmath>
 #include <cstring>
 #include <ctime>
-#include <fmt/ostream.h>
 #include <limits>
 #include <numeric>
-#include <ostream>
 #include <set>
 #include <string>
 #include <tokenize.h>
 
-#include "Ioss_DatabaseIO.h"
-#include "Ioss_ElementBlock.h"
-#include "Ioss_ElementTopology.h"
-#include "Ioss_EntityBlock.h"
-#include "Ioss_EntityType.h"
-#include "Ioss_GroupingEntity.h"
-#include "Ioss_MeshType.h"
-#include "Ioss_NodeBlock.h"
-#include "Ioss_ParallelUtils.h"
-#include "Ioss_Property.h"
-#include "Ioss_Region.h"
-#include "Ioss_SideBlock.h"
-#include "Ioss_SideSet.h"
-#include "Ioss_VariableType.h"
-#include "Ioss_ZoneConnectivity.h"
 #include "robin_hash.h"
 #include "robin_set.h"
 #if CG_BUILD_PARALLEL
@@ -494,7 +493,7 @@ void Iocgns::Utils::cgns_error(int cgnsid, const char *file, const char *functio
   if (processor >= 0) {
     fmt::print(errmsg, " on processor {}", processor);
   }
-  fmt::print(errmsg, ". Please report to gdsjaar@sandia.gov if you need help.");
+  fmt::print(errmsg, ". Please report to sierra-help@sandia.gov if you need help.");
   if (cgnsid > 0) {
 #if CG_BUILD_PARALLEL
     // This can cause a hang if not all processors call this routine
@@ -526,19 +525,14 @@ Ioss::MeshType Iocgns::Utils::check_mesh_type(int cgns_file_ptr)
     }
 
     if (common_zone_type != zone_type) {
-#if IOSS_ENABLE_HYBRID
-      common_zone_type = CGNS_ENUMV(ZoneTypeUserDefined); // This is how we represent hybrid...
-      break;
-#else
-      IOSS_ERROR(fmt::format("ERROR: CGNS: Zone {} is not the same zone type as previous zones."
-                             " This is currently not allowed or supported (hybrid mesh).",
-                             zone));
-#endif
+      IOSS_ERROR(fmt::format(
+          "ERROR: CGNS: Zone {} is not the same zone type as previous zones."
+          " This is currently not allowed or supported (mixed structured/unstructured mesh).",
+          zone));
     }
   }
 
   switch (common_zone_type) {
-  case CGNS_ENUMV(ZoneTypeUserDefined): return Ioss::MeshType::HYBRID;
   case CGNS_ENUMV(Structured): return Ioss::MeshType::STRUCTURED;
   case CGNS_ENUMV(Unstructured): return Ioss::MeshType::UNSTRUCTURED;
   default: return Ioss::MeshType::UNKNOWN;
@@ -697,7 +691,6 @@ namespace {
     // 3 int[3] transform; (values range from -3 to +3 (could store as single int)
     // CGNS_MAX_NAME_LENGTH characters + 17 ints / connection.
 
-    IOSS_PAR_UNUSED(region);
 #if CG_BUILD_PARALLEL
     const int BYTE_PER_NAME = CGNS_MAX_NAME_LENGTH;
     const int INT_PER_ZGC   = 17;
@@ -1050,24 +1043,15 @@ void Iocgns::Utils::write_state_meta_data(int file_ptr, const Ioss::Region &regi
 size_t Iocgns::Utils::common_write_metadata(int file_ptr, const Ioss::Region &region,
                                             std::vector<size_t> &zone_offset, bool is_parallel_io)
 {
-#if !IOSS_ENABLE_HYBRID
-  // Make sure mesh is not hybrid...
-  if (region.mesh_type() == Ioss::MeshType::HYBRID) {
-    IOSS_ERROR(fmt::format("ERROR: CGNS: The mesh on region '{}' is of type 'hybrid'."
-                           " This is currently not allowed or supported.",
-                           region.name()));
-  }
-#endif
-
   region.get_database()->progress("\tEnter common_write_metadata");
   int base           = 0;
   int phys_dimension = region.get_property("spatial_dimension").get_int();
   CGERR(cg_base_write(file_ptr, "Base", phys_dimension, phys_dimension, &base));
 
   CGERR(cg_goto(file_ptr, base, "end"));
-  std::time_t t    = std::time(nullptr);
-  std::string date = fmt::format("{:%Y/%m/%d}", fmt::localtime(t));
-  std::string time = fmt::format("{:%H:%M:%S}", fmt::localtime(t));
+  auto        now  = std::chrono::system_clock::now();
+  std::string date = fmt::format("{:%Y/%m/%d}", now);
+  std::string time = fmt::format("{:%T}", std::chrono::time_point_cast<std::chrono::seconds>(now));
 
   std::string code_version = region.get_optional_property("code_version", "unknown");
   std::string code_name    = region.get_optional_property("code_name", "unknown");

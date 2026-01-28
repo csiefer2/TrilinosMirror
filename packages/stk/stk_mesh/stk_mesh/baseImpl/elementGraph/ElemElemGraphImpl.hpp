@@ -220,7 +220,7 @@ struct ParallelElementData
 
     void set_proc_rank(int proc) { remoteElementData.set_proc_rank(proc); }
 
-    stk::mesh::EntityId m_suggestedFaceId;
+    stk::mesh::EntityId m_suggestedFaceId{0u};
 
 private:
     RemoteElementData remoteElementData;
@@ -278,6 +278,13 @@ struct ElementViaSidePair
 {
     stk::mesh::Entity element;
     int side;
+};
+
+struct ConnectedElementInfo
+{
+    stk::mesh::Entity element;
+    int thisSide;
+    int otherSide;
 };
 
 struct IdViaSidePair

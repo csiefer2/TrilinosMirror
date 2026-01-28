@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <functional>
 #include <iostream>
@@ -99,13 +100,13 @@ namespace {
                  "the 'owning_processor'"
                  " field prior to the output of nodal data.  This field has not yet been "
                  "defined so output is not possible."
-                 " For more information, contact gdsjaar@sandia.gov.\n");
+                 " For more information, contact sierra-help@sandia.gov.\n");
     }
     else if (nop.size() < file_node_count) {
       IOSS_ERROR(fmt::format(
           "ERROR: The 'owning_processor' data was defined, but it is not the correct size."
           "  Its size is {}, but it must be at least this size {}."
-          " For more information, contact gdsjaar@sandia.gov.\n",
+          " For more information, contact sierra-help@sandia.gov.\n",
           nop.size(), file_node_count));
     }
   }
@@ -804,6 +805,19 @@ namespace Ioex {
       decomp = std::make_unique<DecompositionData<int>>(properties, util().communicator());
     }
     assert(decomp != nullptr);
+
+    if (!blockInclusions.empty()) {
+      fmt::print(Ioss::WarnOut(), "Parallel Decomposition does not handle block Inclusions; only "
+                                  "element block Omissions.\n");
+    }
+    if (!assemblyInclusions.empty() || !assemblyOmissions.empty()) {
+      fmt::print(Ioss::WarnOut(), "Parallel Decomposition does not handle assembly "
+                                  "Omissions/Inclusions; only element block Omissions.\n");
+    }
+    if (!blockOmissions.empty()) {
+      decomp->set_block_omissions(blockOmissions);
+    }
+
     decomp->decompose_model(exoid, get_filename());
 
     read_region();
@@ -991,11 +1005,6 @@ namespace Ioex {
       }
       else {
         if (myProcessor == 0 && max_time == std::numeric_limits<double>::max()) {
-          // NOTE: Don't want to warn on all processors if there are
-          // corrupt steps on all databases, but this will only print
-          // a warning if there is a corrupt step on processor
-          // 0... Need better warnings which won't overload in the
-          // worst case...
           fmt::print(Ioss::WarnOut(),
                      "Skipping step {} at time {} in database file\n\t{}.\nThe data for that step "
                      "is possibly corrupt.\n",
@@ -1216,7 +1225,7 @@ namespace Ioex {
       }
       else {
         block_name = Ioex::get_entity_name(get_file_pointer(), entity_type, id, basename,
-                                           maximumNameLength, db_has_name);
+                                           maximumNameLength, lowerCaseDatabaseNames, db_has_name);
       }
       if (get_use_generic_canonical_name()) {
         std::swap(block_name, alias);
@@ -1534,8 +1543,9 @@ namespace Ioex {
             side_set_name = alias;
           }
           else {
-            side_set_name = Ioex::get_entity_name(get_file_pointer(), EX_SIDE_SET, id, "surface",
-                                                  maximumNameLength, db_has_name);
+            side_set_name =
+                Ioex::get_entity_name(get_file_pointer(), EX_SIDE_SET, id, "surface",
+                                      maximumNameLength, lowerCaseDatabaseNames, db_has_name);
           }
 
           if (side_set_name == "universal_sideset") {
@@ -1897,7 +1907,7 @@ namespace Ioex {
       }
       else {
         Xset_name = Ioex::get_entity_name(get_file_pointer(), type, id, base + "list",
-                                          maximumNameLength, db_has_name);
+                                          maximumNameLength, lowerCaseDatabaseNames, db_has_name);
       }
 
       if (get_use_generic_canonical_name()) {
@@ -4906,9 +4916,7 @@ namespace Ioex {
 
     if (metaDataWritten) {
       const Ioss::NodeBlockContainer &node_blocks = get_region()->get_node_blocks();
-      if (node_blocks.empty()) {
-        return;
-      }
+      assert(!node_blocks.empty());
       assert(node_blocks[0]->property_exists("_processor_offset"));
       assert(node_blocks[0]->property_exists("locally_owned_count"));
       size_t processor_offset    = node_blocks[0]->get_property("_processor_offset").get_int();

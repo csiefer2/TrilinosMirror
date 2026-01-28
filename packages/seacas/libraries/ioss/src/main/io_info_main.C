@@ -6,9 +6,9 @@
  * See packages/seacas/LICENSE for details
  */
 
-#include <fmt/core.h>
+#include <cstdlib>
+#include <fmt/format.h>
 #include <ostream>
-#include <stdlib.h>
 #include <string>
 
 #include "Ionit_Initializer.h"
@@ -22,7 +22,7 @@
 
 namespace {
   std::string codename;
-  std::string version = "1.07 (2024/11/08)";
+  std::string version = "1.09 (2025/05/01)";
 
 #ifdef SEACAS_HAVE_MPI
   void mpi_finalize()

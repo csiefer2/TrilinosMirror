@@ -34,12 +34,14 @@
 
 cmake_minimum_required(VERSION 3.23 FATAL_ERROR)
 
-message("Starting STK cmake configuration, CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+message(" - - - Starting STK cmake configuration - - - ")
+message("CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
 
 option(STK_BUILT_FOR_SIERRA "Enable SIERRA capability" OFF)
 set(SIERRA_MIGRATION ${STK_BUILT_FOR_SIERRA} CACHE BOOL "Enable SIERRA capability")
 
 if(STK_BUILT_FOR_SIERRA)
+message("STK_BUILT_FOR_SIERRA is ON")
 set(STK_ENABLE_16BIT_UPWARDCONN_INDEX_TYPE ON)
 endif()
 
@@ -49,7 +51,7 @@ IF(COMMAND TRIBITS_PACKAGE_DECL)
   message("*** Building STK as a Trilinos package. ***")
 ELSE()
   SET(HAVE_STK_Trilinos OFF)
-  project(STK CXX Fortran)
+  project(STK CXX)
 
   SET(PACKAGE_NAME "STK")
 
@@ -99,12 +101,15 @@ IF (HAVE_STK_Trilinos)
     message("STK_HAS_MPI is false")
     SET(STK_HAS_MPI OFF)
   endif()
+
+  set(STK_HAVE_KOKKOS ON)
 ELSE()
   if(STK_ENABLE_TESTS)
     enable_testing()
   endif()
 
   find_package(Kokkos REQUIRED)
+  set(STK_HAVE_KOKKOS ON)
 
   IF(DEFINED STK_ENABLE_MPI)
     IF(STK_ENABLE_MPI)
@@ -199,6 +204,12 @@ ENDIF()
 IF (${${PROJECT_NAME}_ENABLE_STKIO})
   SET(STK_HAVE_STKIO ON)
 ENDIF()
+IF (${${PROJECT_NAME}_ENABLE_STKSearchUtil})
+  SET(STK_HAVE_STKSEARCHUTIL ON)
+ENDIF()
+IF (${${PROJECT_NAME}_ENABLE_STKTransferUtil})
+  SET(STK_HAVE_STKTRANSFERUTIL ON)
+ENDIF()
 
 SET(STK_VOLATILE_SIMD ON)
 
@@ -225,9 +236,9 @@ ENDIF()
 
 message("\nCMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
-STK_CONFIGURE_FILE(STK_Trilinos_config.h)
+STK_CONFIGURE_FILE(STK_cmake_config.h)
 
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/STK_Trilinos_config.h DESTINATION
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/STK_cmake_config.h DESTINATION
         ${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}/stk_util)
 
 STK_SUBPACKAGES()
@@ -256,19 +267,7 @@ IF (NOT HAVE_STK_Trilinos)
     DESTINATION share/cmake/stk
     COMPONENT Devel
   )
-  if(STK_BUILT_FOR_SIERRA)
-    install(
-      FILES cmake/stkLapackSierra.cmake
-      DESTINATION share/cmake/stk
-      RENAME stkLapack.cmake
-      COMPONENT Devel
-    )
-  else()
-    install(
-      FILES cmake/stkLapackGeneric.cmake
-      DESTINATION share/cmake/stk
-      RENAME stkLapack.cmake
-      COMPONENT Devel
-    )
-  endif()
 ENDIF()
+
+message(" - - - End of STK cmake configuration - - - ")
+
