@@ -3,45 +3,68 @@ name: csiefer PR copy action
 on:
   schedule:
     - cron: '0 * * * *'  # Runs once an hour at the top of the hour
-  workflow_dispatch:  # Allows manual triggering of the workflow
+  workflow_dispatch:  # Allows manual triggering
 
-env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions:
+  contents: write
+  pull-requests: read
 
 jobs:
   copy-pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the source repository
-        uses: actions/checkout@v2
+      - name: Checkout the target repository
+        uses: actions/checkout@v4
         with:
-          repository: trilinos/Trilinos
+          # We check out the MIRROR repo, so we have permissions to push to it
+          repository: csiefer2/TrilinosMirror
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # Fetch full history to ensure git operations work smoothly
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+      - name: Add upstream remote
+        run: |
+          # Add the source repo as a remote named 'upstream'
+          git remote add upstream https://github.com/trilinos/Trilinos.git
 
       - name: Get PRs authored by specific users
         id: get_prs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Query the UPSTREAM repo for PRs
           PRS=$(gh pr list --repo trilinos/Trilinos --state open --json number,author --jq '.[] | select(.author.login == "csiefer2" or .author.login == "cgcgcg") | .number')
-          echo "::set-output name=prs::$PRS"
+          
+          # Use new GITHUB_OUTPUT syntax to handle multiline or empty results cleanly
+          # We replace newlines with spaces to create a list
+          echo "prs=$(echo $PRS | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
-      - name: Copy PRs to the target repository
+      - name: Mirror PRs to target repository
         if: steps.get_prs.outputs.prs != ''
         run: |
+          # Read the space-separated list of PR numbers
           IFS=' ' read -r -a pr_array <<< "${{ steps.get_prs.outputs.prs }}"
+          
           for pr in "${pr_array[@]}"; do
-            echo "Processing PR #$pr"
-            git checkout -b copy-pr-$pr
-            git config user.name "GitHub Action"
-            git config user.email "action@github.com"
+            # Skip empty items if any
+            [[ -z "$pr" ]] && continue
+            
+            echo "Processing PR #$pr..."
+            
+            # Define a consistent branch name for the mirror
+            MIRROR_BRANCH="pr-mirror-$pr"
 
-            # Checkout the specific PR
-            git fetch origin pull/$pr/head:pr-$pr
-            git checkout pr-$pr
-
-            # Copy files to the target repository
-            cp -r . ../csiefer/Trilinos/
-            cd ../csiefer/Trilinos/
-            git add .
-            git commit -m "Copy PR #$pr from trilinos/Trilinos"
-            git push origin copy-pr-$pr
+            # 1. Fetch the specific PR head from upstream into a local branch
+            #    Force (-f) updates the local branch if the PR was updated
+            git fetch upstream pull/$pr/head:$MIRROR_BRANCH -f
+            
+            # 2. Push that branch to origin (csiefer2/TrilinosMirror)
+            #    Force (-f) allows overwriting the remote branch if the PR was updated
+            git push origin $MIRROR_BRANCH -f
+            
+            echo "Successfully mirrored PR #$pr to branch $MIRROR_BRANCH"
           done
