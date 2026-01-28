@@ -70,7 +70,6 @@ jobs:
             echo "Working on $MIRROR_BRANCH"
             git fetch upstream pull/$pr/head:$MIRROR_BRANCH -f
             git checkout $MIRROR_BRANCH
-            git log $MIRROR_BRANCH..develop
             git push origin $MIRROR_BRANCH:$MIRROR_BRANCH -f
             
             # 3. Create Mirror PR if it doesn't exist
@@ -78,11 +77,13 @@ jobs:
             PR_EXISTS=$(gh pr list --head "$MIRROR_BRANCH" --json number --jq '.[0].number')
             if [ -z "$PR_EXISTS" ]; then
               PR_TITLE=$(gh pr view $pr --repo trilinos/Trilinos --json title --jq '.title')
-              echo "OK PR_TITLE name is: $PR_TITLE"
+              PR_BODY=$(gh pr view $pr --repo trilinos/Trilinos --json body --jq '.body')
+              echo "PR_TITLE name is: $PR_TITLE"
+              echo "$PR_BODY"
               gh pr create \
                 --repo csiefer2/TrilinosMirror \
                 --title "[Mirror] $PR_TITLE" \
-                --body "Automated mirror of upstream PR trilinos/Trilinos#$pr" \
+                --body "Automated mirror of upstream PR trilinos/Trilinos#$pr\n$PR_BODY" \
                 --head "$MIRROR_BRANCH" \
                 --base "develop"
             else
