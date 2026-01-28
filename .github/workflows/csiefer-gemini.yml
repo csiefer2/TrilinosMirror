@@ -1,4 +1,4 @@
-name: csiefer: PR copy action
+name: csiefer PR copy action
 
 on:
   schedule:
