@@ -78,7 +78,7 @@ jobs:
             PR_EXISTS=$(gh pr list --head "$MIRROR_BRANCH" --json number --jq '.[0].number')
             if [ -z "$PR_EXISTS" ]; then
               PR_TITLE=$(gh pr view $pr --repo trilinos/Trilinos --json title --jq '.title')
-              
+              echo "OK PR_TITLE name is: $PR_TITLE"
               gh pr create \
                 --title "[Mirror] $PR_TITLE" \
                 --body "Automated mirror of upstream PR trilinos/Trilinos#$pr" \
