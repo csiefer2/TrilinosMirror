@@ -26,7 +26,7 @@ jobs:
           git remote add upstream https://github.com/trilinos/Trilinos.git
           git fetch upstream develop
 
-      - name: Sync Mirror Master
+      - name: Update Develop from trilinos/Trilinos
         run: |
           # Ensure your mirror's develop is up to date to avoid workflow drift
           git checkout --track origin/develop
@@ -55,6 +55,7 @@ jobs:
             # 1. Strict check: Does this PR touch .github/ at all?
             # We check the diff between the PR head and the upstream develop
             TOUCHES_CONFIG=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path' | grep "^\.github/") || true
+            echo "TOUCHES_CONFIG = $TOUCHES_CONFIG"
             
             if [ -not -z "$TOUCHES_CONFIG" ]; then
               echo "Skipping PR #$pr: contains changes to .github directory."
@@ -66,8 +67,10 @@ jobs:
             # 2. Fetch and Push
             # Using the PAT (set in the checkout step) allows this push to succeed 
             # even if the branch contains workflow files.
+            echo "Working on $MIRROR_BRANCH"
             git fetch upstream pull/$pr/head:$MIRROR_BRANCH -f
             git checkout $MIRROR_BRANCH
+            git log $MIRROR_BRANCH..develop
             git push origin $MIRROR_BRANCH -f
             
             # 3. Create Mirror PR if it doesn't exist
