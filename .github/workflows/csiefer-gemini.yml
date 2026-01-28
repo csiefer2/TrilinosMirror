@@ -24,14 +24,14 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
           git remote add upstream https://github.com/trilinos/Trilinos.git
-          git fetch upstream master
+          git fetch upstream develop
 
       - name: Sync Mirror Master
         run: |
-          # Ensure your mirror's master is up to date to avoid workflow drift
-          git checkout master
-          git merge upstream/master
-          git push origin master
+          # Ensure your mirror's develop is up to date to avoid workflow drift
+          git checkout origin/develop
+          git merge upstream/develop
+          git push origin develop
 
       - name: Get PRs authored by specific users
         id: get_prs
@@ -53,7 +53,7 @@ jobs:
             echo "Analyzing PR #$pr..."
 
             # 1. Strict check: Does this PR touch .github/ at all?
-            # We check the diff between the PR head and the upstream master
+            # We check the diff between the PR head and the upstream develop
             TOUCHES_CONFIG=$(gh pr view $pr --repo trilinos/Trilinos --json files --jq '.files[].path' | grep "^\.github/") || true
             
             if [ -not -z "$TOUCHES_CONFIG" ]; then
@@ -78,7 +78,7 @@ jobs:
                 --title "[Mirror] $PR_TITLE" \
                 --body "Automated mirror of upstream PR trilinos/Trilinos#$pr" \
                 --head "$MIRROR_BRANCH" \
-                --base "master"
+                --base "develop"
             else
               echo "Mirror PR #$PR_EXISTS updated."
             fi
