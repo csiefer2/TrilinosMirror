@@ -38,7 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.MIRROR_PAT }} # Use PAT for CLI calls too
         run: |
-          PRS=$(gh pr list --repo trilinos/Trilinos --state open --json number,author --jq '.[] | select(.author.login == "csiefer2" or .author.login == "cgcgcg") | .number')          
+          PRS=$(gh pr list --repo trilinos/Trilinos --state open --json number,author --jq '.[] | select(.author.login == "csiefer2" or .author.login == "cgcgcg" or .author.login == "MalachiTimothyPhillips" ) | .number')          
           echo "prs=$(echo $PRS | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
       - name: Mirror PRs
