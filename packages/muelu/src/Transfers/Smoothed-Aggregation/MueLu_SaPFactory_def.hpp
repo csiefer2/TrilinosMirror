@@ -190,7 +190,7 @@ void SaPFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::BuildP(Level& fineLe
                                                                              useAutomaticDiagTol);
             TEUCHOS_TEST_FOR_EXCEPTION(invDiag.is_null(), Exceptions::RuntimeError,
                                        "SaPFactory: eigenvalue estimate: diagonal reciprocal is null.");
-            lambdaMax = Utilities::PowerMethod(*A, invDiag, maxEigenIterations, stopTol);
+            lambdaMax = Utilities::PowerMethod(*A, invDiag, maxEigenIterations, stopTol, diagonalReplacementTolerance);
           } else
             lambdaMax = Utilities::PowerMethod(*A, true, maxEigenIterations, stopTol, diagonalReplacementTolerance);
           A->SetMaxEigenvalueEstimate(lambdaMax);
@@ -300,7 +300,7 @@ void SaPFactory<Scalar, LocalOrdinal, GlobalOrdinal, Node>::BuildP(Level& fineLe
                                                                              useAutomaticDiagTol);
             TEUCHOS_TEST_FOR_EXCEPTION(invDiag.is_null(), Exceptions::RuntimeError,
                                        "SaPFactory: eigenvalue estimate: diagonal reciprocal is null.");
-            lambdaMax = Utilities::PowerMethod(*CurlCurl, invDiag, maxEigenIterations, stopTol);
+            lambdaMax = Utilities::PowerMethod(*CurlCurl, invDiag, maxEigenIterations, stopTol, diagonalReplacementTolerance);
           } else
             lambdaMax = Utilities::PowerMethod(*CurlCurl, true, maxEigenIterations, stopTol, diagonalReplacementTolerance);
           CurlCurl->SetMaxEigenvalueEstimate(lambdaMax);
