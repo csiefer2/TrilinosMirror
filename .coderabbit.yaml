@@ -63,4 +63,4 @@ reviews:
     labels: []
     drafts: true
     base_branches:
-      - develop
+      - "develop"
