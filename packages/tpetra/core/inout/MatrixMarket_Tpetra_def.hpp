@@ -2313,6 +2313,16 @@ MatrixMarketReader<Scalar, LocalOrdinal, GlobalOrdinal, Node>::readSparse(std::i
         }
         cerr << rowPtr[numRows] << "]" << endl;
       }
+
+      // Broadcast success flag to all ranks
+      int mergeAndConvertSucceededAll = mergeAndConvertSucceeded;
+      broadcast(*pComm, rootRank, ptr(&mergeAndConvertSucceededAll));
+      if (mergeAndConvertSucceededAll == 0) {
+        TEUCHOS_TEST_FOR_EXCEPTION(
+            true, std::runtime_error,
+            "Failed to merge sparse matrix entries and convert to CSR format: "
+                << errMsg.str());
+      }
     }  // if myRank == rootRank
 
     // Broadcast success flag to all ranks
