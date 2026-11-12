@@ -342,6 +342,7 @@ struct UnitTestSetup {
     UTS setup;                                                          \
     UTS::vec_type u = std::sin(setup.x);                                \
     UTS::vec_type v = std::sin(setup.x);                                \
+    setup.cx = 0.3;                                                     \
     u OP setup.cx;                                                      \
     for (int i=0; i<setup.sz; i++)                                      \
       v.fastAccessCoeff(i) OP setup.cx.fastAccessCoeff(0);              \
